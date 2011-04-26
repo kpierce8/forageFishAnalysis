@@ -1,13 +1,13 @@
 library(RODBC)
 
-ddir <- c("e")
+ddir <- c("i:/passport")
 
 shell(paste("mkdir C:\\data\\rplots\\plottemp", gsub('-','',Sys.Date()),"\\AD_NonSpat", sep=""))
 script <- "\\AD_NonSpat"
 
 
 
-FFS <- odbcConnectAccess(paste(ddir,":/ForageFish/myForageFish.mdb",sep=""))
+FFS <- odbcConnectAccess(paste(ddir,"/ForageFish/myForageFish.mdb",sep=""))
 ffsall <- sqlFetch(FFS, "FFS_all")  #Survey data
 szline <- sqlFetch(FFS, "szline")   #Beach data
 szlinePF <- sqlFetch(FFS, "szlinePF")

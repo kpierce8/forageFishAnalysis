@@ -1,1 +1,0 @@
-see Word doc of same name
