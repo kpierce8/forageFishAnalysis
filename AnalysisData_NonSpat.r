@@ -1,22 +1,31 @@
 library(RODBC)
 
-ddir <- c("i:/passport")
+ddir <- c("c:/data")
 
 shell(paste("mkdir C:\\data\\rplots\\plottemp", gsub('-','',Sys.Date()),"\\AD_NonSpat", sep=""))
 script <- "\\AD_NonSpat"
 
 
 
-FFS <- odbcConnectAccess(paste(ddir,"/ForageFish/myForageFish.mdb",sep=""))
+FFS <- odbcConnectAccess(paste(ddir,"/myForageFish2.mdb",sep=""))
 ffsall <- sqlFetch(FFS, "FFS_all")  #Survey data
+
 szline <- sqlFetch(FFS, "szline")   #Beach data
+#INSERTING COLUMNS TO FIX SELECTIONS< FIX FOR REAL LATER
+
+szline <- data.frame(szline[,1] , szline)
 szlinePF <- sqlFetch(FFS, "szlinePF")
+szlinePF <- data.frame(szlinePF[,1] , szlinePF)
+
+
 szlinePFsing <- sqlFetch(FFS, "szlinePF_single")
+szlinePFsing <- data.frame( szlinePFsing[,1], szlinePFsing)
+
 ffsall$moscut <- cut(ffsall$CosMos,5,labels=c(1,2,3,4,5))                                    
 
 m1 <- match(szlinePF$UNIT_ID,szline$UNIT_ID)
-ffsall[is.na(ffsall$Smelt_Ind),6] <-0
-ffsall[is.na(ffsall$Sand_Lance_Ind),7] <-0
+ffsall[is.na(ffsall$Smelt_Ind),"Smelt_Ind"] <-0
+ffsall[is.na(ffsall$Sand_Lance_Ind),"Sand_Lance_Ind"] <-0
 szline<- szline[m1,]
 bmatch <- match(ffsall$szline_Near_UNIT_ID,szline$UNIT_ID)
 length(unique(ffsall$szline_Near_UNIT_ID))
@@ -79,7 +88,7 @@ summary(unit_data)
 smatch<-match(szline$OBJECTID, unit_counts[,1])
 
 szcounts<-  data.frame(szline,unit_data[smatch,])
-write.dbf(unit_data,file="f:/foragefish/unit_data.dbf")
+write.dbf(unit_data,file="c:/data/projectslocal/forage_fish/unit_data.dbf")
 
 dim(szcounts)
 summary(szcounts)
@@ -114,17 +123,33 @@ hist(unit_yrrange)
 savePlot(paste(pldir,script,"\\HistYrRange.pdf",sep=""),type="pdf")
 
 # Survey quantity vs year range
-plot(unit_data$surveys+rnorm(dim(unit_data)[1]), unit_data$yrrange+rnorm(dim(unit_data)[1]), xlim=c(1,40),cex=.25)
+plot(unit_data$surveys+rnorm(dim(unit_data)[1]), unit_data$yrrange+rnorm(dim(unit_data)[1]), main = "looking for correlation between number of visits and samples spread", xlim=c(1,40),cex=.25)
 savePlot(paste(pldir,script,"\\SurveyvsYrRange.pdf",sep=""),type="pdf")
 
-barplot(tapply(ffsall[,6],ffsall$Year_,sum,na.rm=TRUE),ylab="Smelt Observations")
+
+
+#Positive surveys by species
+
+
+smeltByYear <- tapply(ffsall[,"Smelt_Ind"],ffsall$Year_,sum,na.rm=TRUE)
+barplot(tapply(ffsall[,"Smelt_Ind"],ffsall$Year_,sum,na.rm=TRUE),ylab="Smelt Observations")
 savePlot(paste(pldir,script,"\\SmeltObservations.pdf",sep=""),type="pdf")
-barplot(tapply(ffsall[,7],ffsall$Year_,sum,na.rm=TRUE),ylab="Sand Lance Observations")
+
+lanceByYear <- tapply(ffsall[,"Sand_Lance_Ind"],ffsall$Year_,sum,na.rm=TRUE)
+barplot(tapply(ffsall[,"Sand_Lance_Ind"],ffsall$Year_,sum,na.rm=TRUE),ylab="Sand Lance Observations")
 savePlot(paste(pldir,script,"\\LanceObservations.pdf",sep=""),type="pdf")
-barplot(table(ffsall$Year_),ylab="Surveys")
-savePlot(paste(pldir,script,"\\Surveys.pdf",sep=""),type="pdf")
 
+#surveys per year
+surveyByYear <- table(ffsall$Year_)
+barplot(table(ffsall$Year_),xlab="Year", ylab="Surveys", main="All surveys per year")
+savePlot(paste(pldir,script,"\\SurveysPerYear.pdf",sep=""),type="pdf")
 
+#percentage detections
+barplot(smeltByYear/surveyByYear, ylab="Percentage Observations by Year", main="Surf Smelt") 
+savePlot(paste(pldir,script,"\\SmeltPercentagePerYear.pdf",sep=""),type="pdf")
+
+barplot(lanceByYear/surveyByYear, ylab="Percentage Observations by Year", main="Sand Lance") 
+savePlot(paste(pldir,script,"\\LancePercentagePerYear.pdf",sep=""),type="pdf")
 
 ffsall$colcut<- cut(ffsall$SmeltEggsPercLive,5,labels=c(1,2,3,4,5))
 #ffsall<-data.frame(ffsall,colcut=temp1)
@@ -134,7 +159,7 @@ windows(width=11, height=8,xpinch=72,ypinch=72)
 par(mfrow=c(2,3),mai=c(.25,.1,.1,.25))
 years<- sort(unique(ffsall$Year_))
 for(i in 1:34){
-plot(ffsall[,11],ffsall[,12],pch=".",xlim=c(900000,1250000),ylim=c(600000,1400000))
+plot(ffsall[,"East_Coord"],ffsall[,"North_Coord"],pch=".",xlim=c(900000,1250000),ylim=c(600000,1400000))
 yrdata<-ffsall[ffsall$Year_ == years[i],]
 yrsmelt <- yrdata[yrdata[,6] == 1,]
 dim(yrdata)
@@ -148,7 +173,7 @@ if(i %% 6 == 0) savePlot(filename=paste(pldir,script,"\\surveys",i,".pdf",sep=""
 savePlot(filename=paste(pldir,script,"/surveys",i,".pdf",sep=""),type="pdf")
 
 par(mfrow=c(1,1))
-plot(ffsall[,11],ffsall[,12],pch=".",xlim=c(900000,1250000),ylim=c(600000,1400000))
+plot(ffsall[,"East_Coord"],ffsall[,"North_Coord"], pch=".",xlim=c(900000,1250000),ylim=c(600000,1400000))
 
 library(sfsmisc)
 library(plotrix)
@@ -168,7 +193,7 @@ colramp<- heat.colors(5)
 cbob<- color.gradient(c(1,0,0),c(0,1,0),c(0,0,1),nslices=5)
 years<- sort(unique(ffsall$Year_))
 for(i in 1:34){
-plot(ffsall[,11],ffsall[,12],pch=".",xlim=c(500000,1300000),ylim=c(600000,1400000),xlab="easting",ylab="northing")
+plot(ffsall[,"East_Coord"],ffsall[,"North_Coord"],pch=".",xlim=c(500000,1300000),ylim=c(600000,1400000),xlab="easting",ylab="northing")
 yrdata<-ffsall[ffsall$Year_ == years[i],]
 yrsmelt <- yrdata[yrdata[,6] == 1,]
 
